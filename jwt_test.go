@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"io/ioutil"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,7 +22,7 @@ func TestAuthJWT(t *testing.T) {
 	t.Run("should 401", func(t *testing.T) {
 		assert := assert.New(t)
 
-		jwter := New(JWTOptions{Keys: [][]byte{[]byte("my key")}, ExpiresIn: time.Minute})
+		jwter := New([]interface{}{"my key"}, time.Minute)
 		app := gear.New()
 		app.UseHandler(jwter)
 		srv := app.Start()
@@ -33,17 +35,22 @@ func TestAuthJWT(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(401, res.StatusCode)
 		body, _ := res.Text()
-		assert.Equal("No authorization token was found", body)
+		assert.Equal("No token was found", body)
 	})
 
 	t.Run("should work", func(t *testing.T) {
 		assert := assert.New(t)
 
-		jwter := New(JWTOptions{Keys: [][]byte{[]byte("my key")}, ExpiresIn: time.Minute})
+		jwter := New([]interface{}{[]byte("my key")}, time.Minute)
 		app := gear.New()
-		app.UseHandler(jwter)
+		app.Use(jwter.Serve)
 		app.Use(func(ctx *gear.Context) error {
-			return ctx.End(204)
+			claims, err := jwter.FromCtx(ctx)
+			if err != nil {
+				return err
+			}
+			assert.Equal("world", claims.Get("hello").(string))
+			return ctx.JSON(200, claims)
 		})
 		srv := app.Start()
 		defer srv.Close()
@@ -57,7 +64,11 @@ func TestAuthJWT(t *testing.T) {
 		req.Headers["Authorization"] = "BEARER " + string(token)
 		res, err := req.Get(host)
 		assert.Nil(err)
-		assert.Equal(204, res.StatusCode)
+		assert.Equal(200, res.StatusCode)
+
+		body, _ := ioutil.ReadAll(res.Body)
+		assert.Equal(gear.MIMEApplicationJSONCharsetUTF8, res.Header.Get(gear.HeaderContentType))
+		assert.True(strings.Contains(string(body), `"hello":"world"`))
 		res.Body.Close()
 	})
 }
