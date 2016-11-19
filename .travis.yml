@@ -6,5 +6,5 @@ before_install:
   - go get -t -v ./...
   - go get github.com/mattn/goveralls
 script:
-  - go test -coverprofile=gear-jwt.coverprofile
-  - goveralls -coverprofile=gear-jwt.coverprofile -service=travis-ci
+  - go test -coverprofile=gear-auth.coverprofile
+  - goveralls -coverprofile=gear-auth.coverprofile -service=travis-ci
