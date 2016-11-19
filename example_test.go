@@ -24,11 +24,7 @@ func ExampleGearAuth() {
 	app := gear.New()
 	app.UseHandler(jwter)
 	app.Use(func(ctx *gear.Context) error {
-		claims, err := jwter.FromCtx(ctx)
-		if err != nil {
-			return err
-		}
-		return ctx.JSON(200, claims)
+		return ctx.JSON(200, jwter.FromCtx(ctx))
 	})
 	srv := app.Start()
 	defer srv.Close()

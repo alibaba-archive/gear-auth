@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -251,10 +250,7 @@ func TestGearAuthJWT(t *testing.T) {
 		app := gear.New()
 		app.Use(jwter.Serve)
 		app.Use(func(ctx *gear.Context) error {
-			claims, err := jwter.FromCtx(ctx)
-			if err != nil {
-				return err
-			}
+			claims := jwter.FromCtx(ctx)
 			assert.Equal("world", claims.Get("hello"))
 			return ctx.JSON(200, claims)
 		})
@@ -304,12 +300,10 @@ func TestGearAuthJWT(t *testing.T) {
 		})
 		app := gear.New()
 		app.Use(func(ctx *gear.Context) error {
-			claims, err := jwter.FromCtx(ctx)
-			if err != nil {
-				assert.Equal(401, err.(*gear.Error).Code)
-				return err
+			claims := jwter.FromCtx(ctx)
+			if claims.Get("hello") == nil {
+				return ctx.End(401)
 			}
-			assert.Equal("world", claims.Get("hello"))
 			return ctx.JSON(200, claims)
 		})
 		srv := app.Start()
@@ -420,7 +414,6 @@ RIQzNasYSoRQHQ/6S6Ps8tpMcT+KvIIC8W/e9k0W7Cm72M1P9jU7SLf/vg==
 		})
 		jwter.SetMethods(crypto.SigningMethodES256)
 		token, err := jwter.Sign(jws.Claims{"test": "OK"})
-		fmt.Println(111, token)
 		// eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoiT0sifQ.MEQCIAy5-edjjRliSD4rgYTL02nuNka_n_tGUzDLEvHAKUcpAiAu3QkiPvB3sYO5ZAYJWCPdCk7lh4yYSy4z7VorZ893cQ
 		assert.Nil(err)
 		claims, _ := jwter.Verify(token)

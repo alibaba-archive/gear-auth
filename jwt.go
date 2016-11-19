@@ -183,21 +183,20 @@ func (j *JWT) New(ctx *gear.Context) (interface{}, error) {
 	return nil, &gear.Error{Code: 401, Msg: "No token found"}
 }
 
-// FromCtx will parse and validate token from the ctx,
-// returns either a jwt.Claims or a error with 401 status code.
+// FromCtx will parse and validate token from the ctx, and return it as jwt.Claims.
+// If token not exists or validate failure, a empty jwt.Claims instance returned.
 //
-//  claims, err := jwter.FromCtx(ctx)
-//  if err != nil {
-//  	return err
-//  }
+//  claims := jwter.FromCtx(ctx)
 //  fmt.Println(claims)
 //
-func (j *JWT) FromCtx(ctx *gear.Context) (jwt.Claims, error) {
+func (j *JWT) FromCtx(ctx *gear.Context) jwt.Claims {
 	any, err := ctx.Any(j)
 	if err == nil {
-		return any.(jwt.Claims), nil
+		return any.(jwt.Claims)
 	}
-	return nil, err
+	claims := jwt.Claims{}
+	ctx.SetAny(j, claims)
+	return claims
 }
 
 // Serve implements gear.Handler interface. We can use it as middleware.
