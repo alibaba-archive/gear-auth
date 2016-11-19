@@ -1,5 +1,3 @@
-// Package auth implements authorization and authentication with JWT, JWS, and JWE for Gear.
-
 package auth
 
 import (
@@ -27,10 +25,16 @@ import (
 //
 type TokenExtractor func(ctx *gear.Context) (token string)
 
+// KeyPair represents key struct for ECDSA, RS/PS SigningMethod.
+type KeyPair struct {
+	PrivateKey interface{}
+	PublicKey  interface{}
+}
+
 // JWT represents a module. it can be use to create, decode or verify JWT token.
 // It can be used as gear middleware to authenticate client too.
 type JWT struct {
-	keys       [][]byte
+	keys       []interface{}
 	expiration time.Duration
 
 	issuer         string
@@ -42,11 +46,11 @@ type JWT struct {
 // NewJWT returns a JWT instance, jwter.
 // if key omit, jwter will use crypto.Unsecured as signing method.
 // Otherwise crypto.SigningMethodHS256 will be used. You can change it by jwter.SetMethods.
-func NewJWT(keys ...[]byte) *JWT {
+func NewJWT(keys ...interface{}) *JWT {
 	j := &JWT{methods: []crypto.SigningMethod{crypto.Unsecured}}
 	j.keys = keys
 	if len(keys) == 0 {
-		j.keys = [][]byte{[]byte{}}
+		j.keys = []interface{}{nil}
 	} else {
 		j.methods[0] = crypto.SigningMethodHS256
 	}
@@ -54,7 +58,7 @@ func NewJWT(keys ...[]byte) *JWT {
 		if auth := ctx.Get("Authorization"); strings.HasPrefix(auth, "BEARER ") {
 			token = auth[7:]
 		} else {
-			token = ctx.Param("access_token")
+			token = ctx.Query("access_token")
 		}
 		return
 	}
@@ -80,7 +84,12 @@ func (j *JWT) Sign(content map[string]interface{}, method ...crypto.SigningMetho
 	if len(method) == 0 {
 		method = j.methods
 	}
-	buf, err := jws.NewJWT(claims, method[0]).Serialize(j.keys[0])
+
+	var key interface{} = j.keys[0]
+	if k, ok := key.(KeyPair); ok { // try to extract PrivateKey
+		key = k.PrivateKey
+	}
+	buf, err := jws.NewJWT(claims, method[0]).Serialize(key)
 	if err == nil {
 		return string(buf), nil
 	}
@@ -101,6 +110,9 @@ func (j *JWT) Verify(token string) (jwt.Claims, error) {
 	jwtToken, err := jws.ParseJWT([]byte(token))
 	if err == nil {
 		for _, key := range j.keys { // key rotation
+			if k, ok := key.(KeyPair); ok { // try to extract PublicKey
+				key = k.PublicKey
+			}
 			for _, method := range j.methods { // method rotation
 				if err = jwtToken.Validate(key, method, j.validator...); err == nil {
 					return jwtToken.Claims(), nil
@@ -145,7 +157,7 @@ func (j *JWT) SetValidator(validator *jwt.Validator) {
 //  	if auth := ctx.Get("Authorization"); strings.HasPrefix(auth, "BEARER ") {
 //  		token = auth[7:]
 //  	} else {
-//  		token = ctx.Param("access_token")
+//  		token = ctx.Query("access_token")
 //  	}
 //  	return
 //  }

@@ -1,0 +1,12 @@
+test:
+	go test
+
+cover:
+	rm -f *.coverprofile
+	go test -coverprofile=gear-auth.coverprofile
+	go tool cover -html=gear-auth.coverprofile
+
+doc:
+	godoc -http=:6060
+
+.PHONY: test cover doc

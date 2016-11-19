@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -83,7 +84,9 @@ func TestGearAuthJWT(t *testing.T) {
 		assert := assert.New(t)
 
 		jwter := NewJWT([]byte("key1"))
-		token, err := jwter.Sign(map[string]interface{}{"test": "OK"})
+		token, err := jwter.Sign(map[string]interface{}{})
+		assert.NotNil(err)
+		token, err = jwter.Sign(map[string]interface{}{"test": "OK"})
 		assert.Nil(err)
 		claims, _ := jwter.Verify(token)
 		assert.Equal("OK", claims.Get("test"))
@@ -278,6 +281,8 @@ func TestGearAuthJWT(t *testing.T) {
 		claims1 := jws.Claims{}
 		claims1.Set("hello", "world")
 		token, _ = jwter1.Sign(claims1)
+
+		req = NewRequst()
 		res, err = req.Get(host + "?access_token=" + token)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)
@@ -298,10 +303,10 @@ func TestGearAuthJWT(t *testing.T) {
 			return ""
 		})
 		app := gear.New()
-		app.UseHandler(jwter)
 		app.Use(func(ctx *gear.Context) error {
 			claims, err := jwter.FromCtx(ctx)
 			if err != nil {
+				assert.Equal(401, err.(*gear.Error).Code)
 				return err
 			}
 			assert.Equal("world", claims.Get("hello"))
@@ -325,5 +330,100 @@ func TestGearAuthJWT(t *testing.T) {
 		assert.Equal(gear.MIMEApplicationJSONCharsetUTF8, res.Header.Get(gear.HeaderContentType))
 		assert.True(strings.Contains(string(body), `"hello":"world"`))
 		res.Body.Close()
+
+		req = NewRequst()
+		res, err = req.Get(host + "?access_token=" + token)
+		assert.Nil(err)
+		assert.Equal(401, res.StatusCode)
+		res.Body.Close()
+	})
+
+	t.Run("support SigningMethodRS256", func(t *testing.T) {
+		assert := assert.New(t)
+		// 512 bit, PKCS#8
+		privateKey, _ := crypto.ParseRSAPrivateKeyFromPEM([]byte(`-----BEGIN PRIVATE KEY-----
+MIIBVQIBADANBgkqhkiG9w0BAQEFAASCAT8wggE7AgEAAkEAwNcqwbtB4MZyNI27
++u/wPJ7t72lp5EBsu5aJWFCEUu98o4kforWRkPP1LLc8oL03co7Wglin2/EM2xn6
+/8VSnwIDAQABAkEAj+R+DQ0zfQvW0AwqhnZfZnyYwpp/30eLWvZbCcEa2954Ehwl
+YQ7b1fiBEbWmNu/9C+5s2Q02YbxtgWGhJ5uxQQIhAOMdNjRI+ijYaGLl3peFcCYq
+snWrm9Q6tg0IE0jfdXOvAiEA2V4DeexvcfN1KQre7WNNNtOFmXktlzahyVcBB12m
+nBECIQC0xx3MRIKLXKbKgfrKVTbNypK+w1iIeCtM+C6RhP1ylQIgGqxIrOtweYEw
+fUrSNDsdPH8UQ9L03zta+wPsImVBjqECIHiRnbty/YtVop43mMpH874DJfaYlxs5
+UwLZRrXB/rC5
+-----END PRIVATE KEY-----`))
+
+		publicKey, _ := crypto.ParseRSAPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
+MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAMDXKsG7QeDGcjSNu/rv8Dye7e9paeRA
+bLuWiVhQhFLvfKOJH6K1kZDz9Sy3PKC9N3KO1oJYp9vxDNsZ+v/FUp8CAwEAAQ==
+-----END PUBLIC KEY-----`))
+
+		jwter := NewJWT(KeyPair{
+			PrivateKey: privateKey,
+			PublicKey:  publicKey,
+		})
+		jwter.SetMethods(crypto.SigningMethodRS256)
+		token, err := jwter.Sign(jws.Claims{"test": "OK"})
+		// eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoiT0sifQ.mhv0HslKGE3j5w-1jQLAr_jNBXeaIObaJw5Nn9KpaM5pcv9PmXiBG_9S7-a2I4lO_dZtI__b6Y5Ym2z7kP4z5Q
+		assert.Nil(err)
+		claims, _ := jwter.Verify(token)
+		assert.Equal("OK", claims.Get("test"))
+	})
+
+	t.Run("support SigningMethodPS256", func(t *testing.T) {
+		assert := assert.New(t)
+		// 512 bit, PKCS#8
+		privateKey, _ := crypto.ParseRSAPrivateKeyFromPEM([]byte(`-----BEGIN PRIVATE KEY-----
+MIIBVQIBADANBgkqhkiG9w0BAQEFAASCAT8wggE7AgEAAkEAwNcqwbtB4MZyNI27
++u/wPJ7t72lp5EBsu5aJWFCEUu98o4kforWRkPP1LLc8oL03co7Wglin2/EM2xn6
+/8VSnwIDAQABAkEAj+R+DQ0zfQvW0AwqhnZfZnyYwpp/30eLWvZbCcEa2954Ehwl
+YQ7b1fiBEbWmNu/9C+5s2Q02YbxtgWGhJ5uxQQIhAOMdNjRI+ijYaGLl3peFcCYq
+snWrm9Q6tg0IE0jfdXOvAiEA2V4DeexvcfN1KQre7WNNNtOFmXktlzahyVcBB12m
+nBECIQC0xx3MRIKLXKbKgfrKVTbNypK+w1iIeCtM+C6RhP1ylQIgGqxIrOtweYEw
+fUrSNDsdPH8UQ9L03zta+wPsImVBjqECIHiRnbty/YtVop43mMpH874DJfaYlxs5
+UwLZRrXB/rC5
+-----END PRIVATE KEY-----`))
+
+		publicKey, _ := crypto.ParseRSAPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
+MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAMDXKsG7QeDGcjSNu/rv8Dye7e9paeRA
+bLuWiVhQhFLvfKOJH6K1kZDz9Sy3PKC9N3KO1oJYp9vxDNsZ+v/FUp8CAwEAAQ==
+-----END PUBLIC KEY-----`))
+
+		jwter := NewJWT(KeyPair{
+			PrivateKey: privateKey,
+			PublicKey:  publicKey,
+		})
+		jwter.SetMethods(crypto.SigningMethodPS256)
+		token, err := jwter.Sign(jws.Claims{"test": "OK"})
+		// eyJhbGciOiJQUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoiT0sifQ.J9q3dZLqacdQp_PdqVHfaNNVYUgFyxbV8jhX8HnoZUiHlZKGUXmVDcSSJ4ZfpMUcLmXUDlq5nee9ad0w2IU9DA
+		assert.Nil(err)
+		claims, _ := jwter.Verify(token)
+		assert.Equal("OK", claims.Get("test"))
+	})
+
+	t.Run("support SigningMethodES256", func(t *testing.T) {
+		assert := assert.New(t)
+		// 512 bit, PKCS#8
+		privateKey, _ := crypto.ParseECPrivateKeyFromPEM([]byte(`-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIAh5qA3rmqQQuu0vbKV/+zouz/y/Iy2pLpIcWUSyImSwoAoGCCqGSM49
+AwEHoUQDQgAEYD54V/vp+54P9DXarYqx4MPcm+HKRIQzNasYSoRQHQ/6S6Ps8tpM
+cT+KvIIC8W/e9k0W7Cm72M1P9jU7SLf/vg==
+-----END EC PRIVATE KEY-----`))
+
+		publicKey, _ := crypto.ParseECPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEYD54V/vp+54P9DXarYqx4MPcm+HK
+RIQzNasYSoRQHQ/6S6Ps8tpMcT+KvIIC8W/e9k0W7Cm72M1P9jU7SLf/vg==
+-----END PUBLIC KEY-----`))
+
+		jwter := NewJWT(KeyPair{
+			PrivateKey: privateKey,
+			PublicKey:  publicKey,
+		})
+		jwter.SetMethods(crypto.SigningMethodES256)
+		token, err := jwter.Sign(jws.Claims{"test": "OK"})
+		fmt.Println(111, token)
+		// eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoiT0sifQ.MEQCIAy5-edjjRliSD4rgYTL02nuNka_n_tGUzDLEvHAKUcpAiAu3QkiPvB3sYO5ZAYJWCPdCk7lh4yYSy4z7VorZ893cQ
+		assert.Nil(err)
+		claims, _ := jwter.Verify(token)
+		assert.Equal("OK", claims.Get("test"))
 	})
 }
