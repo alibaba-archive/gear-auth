@@ -9,6 +9,44 @@ Auth library with JWT, JWS, and JWE for Gear.
 
 
 ## Demo
+
+### Create a token and verify it.
+```go
+jwter := NewJWT([]byte("key1"))
+token, _ := jwter.Sign(jwt.Claims{"test": "OK"})
+claims, _ := jwter.Verify(token)
+fmt.Println(claims.Get("test"))
+// Output: "OK"
+```
+
+### Create a token and verify it with ECDSA
+```go
+// 512 bit, PKCS#8
+privateKey, _ := crypto.ParseECPrivateKeyFromPEM([]byte(`-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIAh5qA3rmqQQuu0vbKV/+zouz/y/Iy2pLpIcWUSyImSwoAoGCCqGSM49
+AwEHoUQDQgAEYD54V/vp+54P9DXarYqx4MPcm+HKRIQzNasYSoRQHQ/6S6Ps8tpM
+cT+KvIIC8W/e9k0W7Cm72M1P9jU7SLf/vg==
+-----END EC PRIVATE KEY-----`))
+
+publicKey, _ := crypto.ParseECPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEYD54V/vp+54P9DXarYqx4MPcm+HK
+RIQzNasYSoRQHQ/6S6Ps8tpMcT+KvIIC8W/e9k0W7Cm72M1P9jU7SLf/vg==
+-----END PUBLIC KEY-----`))
+
+jwter := NewJWT(KeyPair{
+	PrivateKey: privateKey,
+	PublicKey:  publicKey,
+})
+jwter.SetMethods(crypto.SigningMethodES256)
+token, _ := jwter.Sign(jws.Claims{"test": "OK"})
+fmt.Println(token)
+// Output:  "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoiT0sifQ.MEQCIAy5-edjjRliSD4rgYTL02nuNka_n_tGUzDLEvHAKUcpAiAu3QkiPvB3sYO5ZAYJWCPdCk7lh4yYSy4z7VorZ893cQ"
+claims, _ := jwter.Verify(token)
+fmt.Println(claims.Get("test"))
+// Output: "OK"
+```
+
+### Use with Gear.
 ```go
 package main
 
