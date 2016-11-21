@@ -37,10 +37,10 @@ type JWT struct {
 	keys       []interface{}
 	expiration time.Duration
 
-	issuer         string
-	methods        []crypto.SigningMethod
-	validator      []*jwt.Validator
-	tokenExtractor TokenExtractor
+	issuer    string
+	methods   []crypto.SigningMethod
+	validator []*jwt.Validator
+	extractor TokenExtractor
 }
 
 // NewJWT returns a JWT instance, jwter.
@@ -54,7 +54,7 @@ func NewJWT(keys ...interface{}) *JWT {
 	} else {
 		j.methods[0] = crypto.SigningMethodHS256
 	}
-	j.tokenExtractor = func(ctx *gear.Context) (token string) {
+	j.extractor = func(ctx *gear.Context) (token string) {
 		if auth := ctx.Get("Authorization"); strings.HasPrefix(auth, "BEARER ") {
 			token = auth[7:]
 		} else {
@@ -163,7 +163,7 @@ func (j *JWT) SetValidator(validator *jwt.Validator) {
 //  }
 //
 func (j *JWT) SetTokenParser(extractor TokenExtractor) {
-	j.tokenExtractor = extractor
+	j.extractor = extractor
 }
 
 // New implements gear.Any interface, then we can use it with ctx.Any:
@@ -177,7 +177,7 @@ func (j *JWT) SetTokenParser(extractor TokenExtractor) {
 // that is jwter.FromCtx doing for us.
 //
 func (j *JWT) New(ctx *gear.Context) (interface{}, error) {
-	if token := j.tokenExtractor(ctx); token != "" {
+	if token := j.extractor(ctx); token != "" {
 		return j.Verify(token)
 	}
 	return nil, &gear.Error{Code: 401, Msg: "No token found"}
@@ -210,6 +210,9 @@ func (j *JWT) FromCtx(ctx *gear.Context) jwt.Claims {
 //  app.Use(jwter.Serve)
 //
 func (j *JWT) Serve(ctx *gear.Context) error {
-	_, err := ctx.Any(j)
+	claims, err := j.New(ctx)
+	if err == nil {
+		ctx.SetAny(j, claims)
+	}
 	return err
 }
