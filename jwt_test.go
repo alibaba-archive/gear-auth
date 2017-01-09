@@ -250,7 +250,7 @@ func TestGearAuthJWT(t *testing.T) {
 		app := gear.New()
 		app.Use(jwter.Serve)
 		app.Use(func(ctx *gear.Context) error {
-			claims := jwter.FromCtx(ctx)
+			claims, _ := jwter.FromCtx(ctx)
 			assert.Equal("world", claims.Get("hello"))
 			return ctx.JSON(200, claims)
 		})
@@ -300,8 +300,10 @@ func TestGearAuthJWT(t *testing.T) {
 		})
 		app := gear.New()
 		app.Use(func(ctx *gear.Context) error {
-			claims := jwter.FromCtx(ctx)
-			if claims.Get("hello") == nil {
+			claims, err := jwter.FromCtx(ctx)
+			if err != nil {
+				assert.Empty(len(claims))
+				assert.Nil(claims.Get("hello"))
 				return ctx.End(401)
 			}
 			return ctx.JSON(200, claims)

@@ -29,7 +29,10 @@ Example:
     app := gear.New()
     app.UseHandler(jwter)
     app.Use(func(ctx *gear.Context) error {
-      claims := jwter.FromCtx(ctx)
+      claims, err := jwter.FromCtx(ctx)
+      if err != nil {
+        return err // means Authentication failure.
+      }
       return ctx.JSON(200, claims)
     })
     srv := app.Start()
@@ -56,4 +59,4 @@ Learn more at https://github.com/teambition/gear-auth
 package auth
 
 // Version is Gear-Auth version
-const Version = "v1.0.2"
+const Version = "v1.1.0"

@@ -77,9 +77,10 @@ func main() {
 	app.UseHandler(jwter)
 
 	app.Use(func(ctx *gear.Context) error {
-		// get JWT claims from the ctx. claims should always has content(not empty)
-		// because of authentication success in previous middleware.
-		claims := jwter.FromCtx(ctx)
+		claims, err := jwter.FromCtx(ctx)
+		if err != nil {
+			return err // means Authentication failure.
+		}
 		return ctx.JSON(200, claims)
 	})
 	srv := app.Start()
