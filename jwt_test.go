@@ -26,7 +26,7 @@ func TestGearAuthJWT(t *testing.T) {
 
 		jwter := NewJWT()
 		assert.Equal(1, len(jwter.keys))
-		assert.Equal(crypto.Unsecured, jwter.methods[0])
+		assert.Equal(crypto.Unsecured, jwter.method)
 
 		token, err := jwter.Sign(jwt.Claims{"test": "OK"})
 		assert.Nil(err)
@@ -41,7 +41,7 @@ func TestGearAuthJWT(t *testing.T) {
 		jwter1 := NewJWT([]byte("key1"))
 		jwter2 := NewJWT([]byte("key2"))
 		assert.Equal(1, len(jwter1.keys))
-		assert.Equal(crypto.SigningMethodHS256, jwter1.methods[0])
+		assert.Equal(crypto.SigningMethodHS256, jwter1.method)
 
 		token, err := jwter1.Sign(jwt.Claims{"test": "OK"})
 		assert.Nil(err)
@@ -101,20 +101,30 @@ func TestGearAuthJWT(t *testing.T) {
 		assert.Equal("OK", claims.Get("test"))
 	})
 
-	t.Run("Sign with custom method", func(t *testing.T) {
+	t.Run("Sign with custom expiresIn", func(t *testing.T) {
 		assert := assert.New(t)
 
 		jwter := NewJWT([]byte("key1"))
-		jwter.SetMethods(crypto.SigningMethodHS256, crypto.SigningMethodHS384)
-		token, err := jwter.Sign(jws.Claims{"test": "OK"}, crypto.SigningMethodHS384)
+		assert.Equal(time.Duration(0), jwter.GetExpiresIn())
+		jwter.SetExpiresIn(time.Minute)
+		assert.Equal(time.Minute, jwter.GetExpiresIn())
+
+		token, err := jwter.Sign(jws.Claims{"test": "OK"})
 		assert.Nil(err)
 		claims, _ := jwter.Verify(token)
 		assert.Equal("OK", claims.Get("test"))
+		time1, _ := claims.Expiration()
+		assert.True(time1.Unix() > time.Now().Unix())
 
-		jwter2 := NewJWT([]byte("key1"))
-		jwter2.SetMethods(crypto.SigningMethodHS384)
-		claims, _ = jwter2.Verify(token)
-		assert.Equal("OK", claims.Get("test"))
+		token2, _ := jwter.Sign(jws.Claims{"test": "OK"}, time.Duration(0))
+		claims2, _ := jwter.Verify(token2)
+		time2, _ := claims2.Expiration()
+		assert.True(time2.IsZero())
+
+		token3, _ := jwter.Sign(jws.Claims{"test": "OK"}, time.Second)
+		claims3, _ := jwter.Verify(token3)
+		time3, _ := claims3.Expiration()
+		assert.True(time1.Unix() > time3.Unix())
 	})
 
 	t.Run("Decode", func(t *testing.T) {
@@ -153,7 +163,7 @@ func TestGearAuthJWT(t *testing.T) {
 		assert.Equal("Gear", claims.Get("iss"))
 	})
 
-	t.Run("SetExpiration", func(t *testing.T) {
+	t.Run("SetExpiresIn", func(t *testing.T) {
 		assert := assert.New(t)
 
 		jwter := NewJWT([]byte("key1"))
@@ -163,7 +173,7 @@ func TestGearAuthJWT(t *testing.T) {
 		assert.Equal("OK", claims.Get("test"))
 		assert.Nil(claims.Get("exp"))
 
-		jwter.SetExpiration(time.Second)
+		jwter.SetExpiresIn(time.Second)
 		token, err = jwter.Sign(map[string]interface{}{"test": "OK"})
 		assert.Nil(err)
 		claims, err = jwter.Verify(token)
@@ -181,10 +191,10 @@ func TestGearAuthJWT(t *testing.T) {
 
 		jwter := NewJWT([]byte("key1"))
 		assert.Panics(func() {
-			jwter.SetMethods()
+			jwter.SetMethods(nil)
 		})
-		jwter.SetMethods(crypto.SigningMethodHS256, crypto.SigningMethodHS384)
-		token, err := jwter.Sign(jwt.Claims{"test": "OK"}, crypto.SigningMethodHS384)
+		jwter.SetMethods(crypto.SigningMethodHS384)
+		token, err := jwter.Sign(jwt.Claims{"test": "OK"})
 		assert.Nil(err)
 		claims, _ := jwter.Verify(token)
 		assert.Equal("OK", claims.Get("test"))

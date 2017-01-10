@@ -34,11 +34,10 @@ type KeyPair struct {
 // JWT represents a module. it can be use to create, decode or verify JWT token.
 // It can be used as gear middleware to authenticate client too.
 type JWT struct {
-	keys       []interface{}
-	expiration time.Duration
-
+	keys      []interface{}
+	expiresIn time.Duration
 	issuer    string
-	methods   []crypto.SigningMethod
+	method    crypto.SigningMethod
 	validator []*jwt.Validator
 	extractor TokenExtractor
 }
@@ -47,12 +46,12 @@ type JWT struct {
 // if key omit, jwter will use crypto.Unsecured as signing method.
 // Otherwise crypto.SigningMethodHS256 will be used. You can change it by jwter.SetMethods.
 func NewJWT(keys ...interface{}) *JWT {
-	j := &JWT{methods: []crypto.SigningMethod{crypto.Unsecured}}
+	j := &JWT{method: crypto.Unsecured}
 	j.keys = keys
 	if len(keys) == 0 {
 		j.keys = []interface{}{nil}
 	} else {
-		j.methods[0] = crypto.SigningMethodHS256
+		j.method = crypto.SigningMethodHS256
 	}
 	j.extractor = func(ctx *gear.Context) (token string) {
 		if auth := ctx.Get("Authorization"); strings.HasPrefix(auth, "BEARER ") {
@@ -65,7 +64,7 @@ func NewJWT(keys ...interface{}) *JWT {
 	return j
 }
 
-// Sign creates a JWT token with the given content and optional signing method.
+// Sign creates a JWT token with the given content and optional expiresIn.
 //
 //  token1, err1 := jwter.Sign(map[string]interface{}{"UserId": "xxxxx"})
 //  // or
@@ -73,23 +72,28 @@ func NewJWT(keys ...interface{}) *JWT {
 //  claims.Set("hello", "world")
 //  token2, err2 := jwter.Sign(claims)
 //
-func (j *JWT) Sign(content map[string]interface{}, method ...crypto.SigningMethod) (string, error) {
+// if expiresIn <= 0, expiration will not be set to claims:
+//
+//  token1, err1 := jwter.Sign(map[string]interface{}{"UserId": "xxxxx"}, time.Duration(0))
+//
+func (j *JWT) Sign(content map[string]interface{}, expiresIn ...time.Duration) (string, error) {
 	claims := jws.Claims(content)
 	if j.issuer != "" {
 		claims.SetIssuer(j.issuer)
 	}
-	if j.expiration > 0 {
-		claims.SetExpiration(time.Now().Add(j.expiration))
-	}
-	if len(method) == 0 {
-		method = j.methods
+	if len(expiresIn) > 0 {
+		if expiresIn[0] > 0 {
+			claims.SetExpiration(time.Now().Add(expiresIn[0]))
+		}
+	} else if j.expiresIn > 0 {
+		claims.SetExpiration(time.Now().Add(j.expiresIn))
 	}
 
 	var key interface{} = j.keys[0]
 	if k, ok := key.(KeyPair); ok { // try to extract PrivateKey
 		key = k.PrivateKey
 	}
-	buf, err := jws.NewJWT(claims, method[0]).Serialize(key)
+	buf, err := jws.NewJWT(claims, j.method).Serialize(key)
 	if err == nil {
 		return string(buf), nil
 	}
@@ -113,10 +117,8 @@ func (j *JWT) Verify(token string) (jwt.Claims, error) {
 			if k, ok := key.(KeyPair); ok { // try to extract PublicKey
 				key = k.PublicKey
 			}
-			for _, method := range j.methods { // method rotation
-				if err = jwtToken.Validate(key, method, j.validator...); err == nil {
-					return jwtToken.Claims(), nil
-				}
+			if err = jwtToken.Validate(key, j.method, j.validator...); err == nil {
+				return jwtToken.Claims(), nil
 			}
 		}
 	}
@@ -129,18 +131,23 @@ func (j *JWT) SetIssuer(issuer string) {
 	j.issuer = issuer
 }
 
-// SetExpiration set a expiration time duration to jwter.
+// GetExpiresIn returns jwter's expiration.
+func (j *JWT) GetExpiresIn() time.Duration {
+	return j.expiresIn
+}
+
+// SetExpiresIn set a expire duration to jwter.
 // Default to 0, no "exp" will be added.
-func (j *JWT) SetExpiration(expiration time.Duration) {
-	j.expiration = expiration
+func (j *JWT) SetExpiresIn(expiresIn time.Duration) {
+	j.expiresIn = expiresIn
 }
 
 // SetMethods set one or more signing methods which can be used rotational.
-func (j *JWT) SetMethods(methods ...crypto.SigningMethod) {
-	if len(methods) == 0 {
+func (j *JWT) SetMethods(method crypto.SigningMethod) {
+	if method == nil {
 		panic(errors.New("Invalid signing method"))
 	}
-	j.methods = methods
+	j.method = method
 }
 
 // SetValidator set a custom jwt.Validator to jwter. Default to nil.
