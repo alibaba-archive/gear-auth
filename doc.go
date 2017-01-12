@@ -59,4 +59,4 @@ Learn more at https://github.com/teambition/gear-auth
 package auth
 
 // Version is Gear-Auth version
-const Version = "v1.2.0"
+const Version = "v1.2.1"

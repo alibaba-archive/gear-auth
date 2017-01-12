@@ -57,6 +57,10 @@ func TestGearAuthJWT(t *testing.T) {
 		_, err = jwter1.Verify(token)
 		assert.NotNil(err)
 		assert.Equal(401, err.(*gear.Error).Code)
+
+		_, err = Verify(token, crypto.SigningMethodHS256, []byte("key1"))
+		assert.NotNil(err)
+		assert.Equal(401, err.(*gear.Error).Code)
 	})
 
 	t.Run("New with more key", func(t *testing.T) {
@@ -89,6 +93,9 @@ func TestGearAuthJWT(t *testing.T) {
 		assert.Nil(err)
 		claims, _ := jwter.Verify(token)
 		assert.Equal("OK", claims.Get("test"))
+
+		claims, _ = Verify(token, crypto.SigningMethodHS256, []byte("key1"))
+		assert.Equal("OK", claims.Get("test"))
 	})
 
 	t.Run("Sign with jws.Claims", func(t *testing.T) {
@@ -98,6 +105,9 @@ func TestGearAuthJWT(t *testing.T) {
 		token, err := jwter.Sign(jws.Claims{"test": "OK"})
 		assert.Nil(err)
 		claims, _ := jwter.Verify(token)
+		assert.Equal("OK", claims.Get("test"))
+
+		claims, _ = Verify(token, crypto.SigningMethodHS256, []byte("key1"))
 		assert.Equal("OK", claims.Get("test"))
 	})
 
@@ -373,6 +383,12 @@ bLuWiVhQhFLvfKOJH6K1kZDz9Sy3PKC9N3KO1oJYp9vxDNsZ+v/FUp8CAwEAAQ==
 		assert.Nil(err)
 		claims, _ := jwter.Verify(token)
 		assert.Equal("OK", claims.Get("test"))
+
+		claims, _ = Verify(token, crypto.SigningMethodRS256, KeyPair{
+			PrivateKey: privateKey,
+			PublicKey:  publicKey,
+		})
+		assert.Equal("OK", claims.Get("test"))
 	})
 
 	t.Run("support SigningMethodPS256", func(t *testing.T) {
@@ -404,6 +420,12 @@ bLuWiVhQhFLvfKOJH6K1kZDz9Sy3PKC9N3KO1oJYp9vxDNsZ+v/FUp8CAwEAAQ==
 		assert.Nil(err)
 		claims, _ := jwter.Verify(token)
 		assert.Equal("OK", claims.Get("test"))
+
+		claims, _ = Verify(token, crypto.SigningMethodPS256, KeyPair{
+			PrivateKey: privateKey,
+			PublicKey:  publicKey,
+		})
+		assert.Equal("OK", claims.Get("test"))
 	})
 
 	t.Run("support SigningMethodES256", func(t *testing.T) {
@@ -429,6 +451,12 @@ RIQzNasYSoRQHQ/6S6Ps8tpMcT+KvIIC8W/e9k0W7Cm72M1P9jU7SLf/vg==
 		// eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoiT0sifQ.MEQCIAy5-edjjRliSD4rgYTL02nuNka_n_tGUzDLEvHAKUcpAiAu3QkiPvB3sYO5ZAYJWCPdCk7lh4yYSy4z7VorZ893cQ
 		assert.Nil(err)
 		claims, _ := jwter.Verify(token)
+		assert.Equal("OK", claims.Get("test"))
+
+		claims, _ = Verify(token, crypto.SigningMethodES256, KeyPair{
+			PrivateKey: privateKey,
+			PublicKey:  publicKey,
+		})
 		assert.Equal("OK", claims.Get("test"))
 	})
 }

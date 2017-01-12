@@ -5,6 +5,7 @@ cover:
 	rm -f *.coverprofile
 	go test -coverprofile=gear-auth.coverprofile
 	go tool cover -html=gear-auth.coverprofile
+	rm -f *.coverprofile
 
 doc:
 	godoc -http=:6060

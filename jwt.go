@@ -77,7 +77,7 @@ func NewJWT(keys ...interface{}) *JWT {
 //  token1, err1 := jwter.Sign(map[string]interface{}{"UserId": "xxxxx"}, time.Duration(0))
 //
 func (j *JWT) Sign(content map[string]interface{}, expiresIn ...time.Duration) (string, error) {
-	claims := jws.Claims(content)
+	claims := jwt.Claims(content)
 	if j.issuer != "" {
 		claims.SetIssuer(j.issuer)
 	}
@@ -90,23 +90,12 @@ func (j *JWT) Sign(content map[string]interface{}, expiresIn ...time.Duration) (
 	}
 
 	var key interface{} = j.keys[0]
-	if k, ok := key.(KeyPair); ok { // try to extract PrivateKey
-		key = k.PrivateKey
-	}
-	buf, err := jws.NewJWT(claims, j.method).Serialize(key)
-	if err == nil {
-		return string(buf), nil
-	}
-	return "", err
+	return Sign(claims, j.method, key)
 }
 
 // Decode parse a string token, but don't validate it.
 func (j *JWT) Decode(token string) (jwt.Claims, error) {
-	jwtToken, err := jws.ParseJWT([]byte(token))
-	if err == nil {
-		return jwtToken.Claims(), nil
-	}
-	return nil, &gear.Error{Code: 401, Msg: err.Error()}
+	return Decode(token)
 }
 
 // Verify parse a string token and validate it with keys, signingMethods and validator in rotationally.
@@ -222,4 +211,41 @@ func (j *JWT) Serve(ctx *gear.Context) error {
 		ctx.SetAny(j, claims)
 	}
 	return err
+}
+
+// Sign creates a JWT token with the given claims, signing method and key.
+func Sign(claims jwt.Claims, method crypto.SigningMethod, key interface{}) (string, error) {
+	if k, ok := key.(KeyPair); ok { // try to extract PrivateKey
+		key = k.PrivateKey
+	}
+	buf, err := jws.NewJWT(jws.Claims(claims), method).Serialize(key)
+	if err == nil {
+		return string(buf), nil
+	}
+	return "", err
+}
+
+// Decode parse a string token, but don't validate it.
+func Decode(token string) (jwt.Claims, error) {
+	jwtToken, err := jws.ParseJWT([]byte(token))
+	if err == nil {
+		return jwtToken.Claims(), nil
+	}
+	return nil, &gear.Error{Code: 401, Msg: err.Error()}
+}
+
+// Verify parse a string token and validate it with keys, signingMethods in rotationally.
+func Verify(token string, method crypto.SigningMethod, keys ...interface{}) (jwt.Claims, error) {
+	jwtToken, err := jws.ParseJWT([]byte(token))
+	if err == nil {
+		for _, key := range keys { // key rotation
+			if k, ok := key.(KeyPair); ok { // try to extract PublicKey
+				key = k.PublicKey
+			}
+			if err = jwtToken.Validate(key, method); err == nil {
+				return jwtToken.Claims(), nil
+			}
+		}
+	}
+	return nil, &gear.Error{Code: 401, Msg: err.Error()}
 }
