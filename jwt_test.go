@@ -257,7 +257,7 @@ func TestGearAuthJWT(t *testing.T) {
 		claims := jwt.Claims{}
 		claims.Set("hello", "world")
 		token, _ := jwter1.Sign(claims)
-		req.Headers["Authorization"] = "BEARER " + token
+		req.Headers["Authorization"] = "Bearer " + token
 		res, err = req.Get(host)
 		assert.Nil(err)
 		assert.Equal(401, res.StatusCode)
@@ -283,7 +283,7 @@ func TestGearAuthJWT(t *testing.T) {
 		claims := jwt.Claims{}
 		claims.Set("hello", "world")
 		token, _ := jwter.Sign(claims)
-		req.Headers["Authorization"] = "BEARER " + token
+		req.Headers["Authorization"] = "Bearer " + token
 		res, err := req.Get(host)
 		assert.Nil(err)
 		assert.Equal(200, res.StatusCode)

@@ -54,7 +54,7 @@ func NewJWT(keys ...interface{}) *JWT {
 		j.method = crypto.SigningMethodHS256
 	}
 	j.extractor = func(ctx *gear.Context) (token string) {
-		if auth := ctx.Get("Authorization"); strings.HasPrefix(auth, "BEARER ") {
+		if auth := ctx.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
 			token = auth[7:]
 		} else {
 			token = ctx.Query("access_token")

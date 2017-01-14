@@ -39,7 +39,7 @@ func ExampleGearAuth() {
 	claims := jwt.Claims{}
 	claims.Set("Hello", "world")
 	token, _ := jwter.Sign(claims)
-	req.Headers["Authorization"] = "BEARER " + token
+	req.Headers["Authorization"] = "Bearer " + token
 	res, _ := req.Get(host)
 	defer res.Body.Close()
 
