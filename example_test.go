@@ -17,14 +17,14 @@ func NewRequst() *request.Request {
 }
 
 func ExampleGearAuth() {
-	jwter := auth.NewJWT([]byte("key_new"), []byte("key_old"))
-	jwter.SetIssuer("Gear")
-	// jwter.SetExpiration(time.Hour * 24)
+	auther := auth.New([]byte("key_new"), []byte("key_old"))
+	auther.JWT().SetIssuer("Gear")
+	// auther.JWT().SetExpiration(time.Hour * 24)
 
 	app := gear.New()
-	app.UseHandler(jwter)
+	app.UseHandler(auther)
 	app.Use(func(ctx *gear.Context) error {
-		claims, err := jwter.FromCtx(ctx)
+		claims, err := auther.FromCtx(ctx)
 		if err != nil {
 			return err // means Authentication failure.
 		}
@@ -38,7 +38,7 @@ func ExampleGearAuth() {
 
 	claims := jwt.Claims{}
 	claims.Set("Hello", "world")
-	token, _ := jwter.Sign(claims)
+	token, _ := auther.JWT().Sign(claims)
 	req.Headers["Authorization"] = "Bearer " + token
 	res, _ := req.Get(host)
 	defer res.Body.Close()
