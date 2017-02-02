@@ -2,7 +2,6 @@ package crypto
 
 import (
 	"encoding/base64"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,30 +18,39 @@ func TestCrypto(t *testing.T) {
 		assert.True(len(b) == 32)
 	})
 
-	t.Run("EncryptUserPass and ValidateUserPass", func(t *testing.T) {
+	t.Run("SignPass and VerifyPass", func(t *testing.T) {
 		assert := assert.New(t)
 
-		epass := c.EncryptUserPass("admin", "test pass")
-		assert.True(c.ValidateUserPass("admin", "test pass", epass))
-		assert.False(c.ValidateUserPass("admin1", "test pass", epass))
-		assert.False(c.ValidateUserPass("admin", "test pass1", epass))
-		assert.False(c.ValidateUserPass("admin", "test pass", epass[1:]))
+		epass := c.SignPass("admin", "test pass")
+		assert.True(c.VerifyPass("admin", "test pass", epass))
+		assert.False(c.VerifyPass("admin1", "test pass", epass))
+		assert.False(c.VerifyPass("admin", "test pass1", epass))
+		assert.False(c.VerifyPass("admin", "test pass", epass[1:]))
 	})
 
-	t.Run("EncryptData and DecryptData", func(t *testing.T) {
+	t.Run("EncryptText and DecryptText", func(t *testing.T) {
 		assert := assert.New(t)
 
 		key := c.AESKey("admin", "test pass")
 
-		edata, err := c.EncryptData(key, "Hello! 中国")
+		edata, err := c.EncryptText(key, "Hello! 中国")
 		assert.Nil(err)
-		data, err := c.DecryptData(key, edata)
+		data, err := c.DecryptText(key, edata)
 		assert.Nil(err)
 		assert.Equal("Hello! 中国", data)
 
-		// fmt.Println(edata)
-		data, err = c.DecryptData(key, edata[1:])
-		fmt.Println(err, data)
+		edata, err = c.EncryptText(key, "")
+		assert.Nil(err)
+		data, err = c.DecryptText(key, edata)
+		assert.Nil(err)
+		assert.Equal("", data)
+
+		data, err = c.DecryptText(key, edata+"1")
 		assert.NotNil(err)
+		assert.Equal("", data)
+
+		data, err = c.DecryptText(key, edata[:len(edata)-10])
+		assert.NotNil(err)
+		assert.Equal("", data)
 	})
 }
