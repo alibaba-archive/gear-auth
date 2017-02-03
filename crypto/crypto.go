@@ -12,7 +12,6 @@ import (
 	"errors"
 	"hash"
 	"io"
-	"sync"
 
 	"github.com/teambition/gear-auth/pbkdf2"
 )
@@ -20,13 +19,11 @@ import (
 // Crypto contains some useful methods.
 type Crypto struct {
 	salt []byte
-	hash hash.Hash
-	mu   sync.Mutex
 }
 
 // New returns a Crypto instance.
 func New(salt []byte) *Crypto {
-	return &Crypto{salt: salt, hash: hmac.New(sha256.New, salt)}
+	return &Crypto{salt: salt}
 }
 
 // AESKey returns a string key to encrypt or decrypt text.
@@ -68,57 +65,56 @@ func (c *Crypto) EncryptText(key, plainText string) (string, error) {
 		return "", err
 	}
 
-	cipherData := make([]byte, size+len(plainText))
+	data := []byte(plainText)
+	cipherData := make([]byte, size+len(data))
 	iv := cipherData[:size]
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
 		return "", err
 	}
 
 	stream := cipher.NewCTR(block, iv)
-	stream.XORKeyStream(cipherData[size:], []byte(plainText))
+	stream.XORKeyStream(cipherData[size:], data)
 	h := hmac.New(sha1.New, cipherData)
-	h.Write(k)
+	h.Write(data)
 	return base64.RawURLEncoding.EncodeToString(append(cipherData, h.Sum(nil)...)), nil
 }
 
 // DecryptText decrypt data with key
-func (c *Crypto) DecryptText(key, cipherData string) (string, error) {
-	data, err := base64.RawURLEncoding.DecodeString(cipherData)
+func (c *Crypto) DecryptText(key, cipherText string) (string, error) {
+	cipherData, err := base64.RawURLEncoding.DecodeString(cipherText)
 	if err != nil {
 		return "", err
 	}
 
 	size := aes.BlockSize
-	if len(data) < size+sha1.Size {
+	if len(cipherData) < size+sha1.Size {
 		return "", errors.New("invalid data")
 	}
 
-	sum := data[len(data)-sha1.Size:]
-	data = data[:len(data)-sha1.Size]
 	k := c.hmacSum([]byte(key))
-	h := hmac.New(sha1.New, data)
-	h.Write(k)
-	if subtle.ConstantTimeCompare(h.Sum(nil), sum) != 1 {
-		return "", errors.New("invalid data")
-	}
-
+	checkSum := cipherData[len(cipherData)-sha1.Size:]
+	cipherData = cipherData[:len(cipherData)-sha1.Size]
 	block, err := aes.NewCipher(k)
 	if err != nil {
 		return "", err
 	}
 
-	plainText := make([]byte, len(data)-size)
-	stream := cipher.NewCTR(block, data[:size])
-	stream.XORKeyStream(plainText, data[size:])
-	return string(plainText), nil
+	data := make([]byte, len(cipherData)-size)
+	stream := cipher.NewCTR(block, cipherData[:size])
+	stream.XORKeyStream(data, cipherData[size:])
+
+	h := hmac.New(sha1.New, cipherData)
+	h.Write(data)
+	if subtle.ConstantTimeCompare(h.Sum(nil), checkSum) != 1 {
+		return "", errors.New("invalid data")
+	}
+	return string(data), nil
 }
 
 func (c *Crypto) hmacSum(data []byte) []byte {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	defer c.hash.Reset()
-	c.hash.Write(data)
-	return c.hash.Sum(nil)
+	h := hmac.New(sha256.New, c.salt)
+	h.Write(data)
+	return h.Sum(nil)
 }
 
 // RandBytes return rand bytes
