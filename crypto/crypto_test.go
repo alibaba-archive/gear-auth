@@ -28,6 +28,28 @@ func TestCrypto(t *testing.T) {
 		assert.False(c.VerifyPass("admin", "test pass", epass[1:]))
 	})
 
+	t.Run("Encrypt and Decrypt", func(t *testing.T) {
+		assert := assert.New(t)
+
+		key := []byte(c.AESKey("admin", "test pass"))
+
+		edata, err := c.Encrypt(key, []byte("Hello! 中国"))
+		assert.Nil(err)
+		data, err := c.Decrypt(key, edata)
+		assert.Nil(err)
+		assert.Equal("Hello! 中国", string(data))
+
+		edata, err = c.Encrypt(key, []byte{})
+		assert.Nil(err)
+		data, err = c.Decrypt(key, edata)
+		assert.Nil(err)
+		assert.Equal([]byte{}, data)
+
+		data, err = c.Decrypt(key, append(edata[0:len(edata)-1], edata[len(edata)-1]+1))
+		assert.NotNil(err)
+		assert.Nil(data)
+	})
+
 	t.Run("EncryptText and DecryptText", func(t *testing.T) {
 		assert := assert.New(t)
 

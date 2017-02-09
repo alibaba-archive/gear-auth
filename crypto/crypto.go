@@ -56,47 +56,41 @@ func (c *Crypto) VerifyPass(name, pass, checkPass string) bool {
 	return subtle.ConstantTimeCompare(a, b) == 1
 }
 
-// EncryptText encrypt data with key
-func (c *Crypto) EncryptText(key, plainText string) (string, error) {
-	k := c.hmacSum([]byte(key))
+// Encrypt encrypt data with key
+func (c *Crypto) Encrypt(key, data []byte) ([]byte, error) {
+	k := c.hmacSum(key)
 	size := aes.BlockSize
 	block, err := aes.NewCipher(k)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	data := []byte(plainText)
 	cipherData := make([]byte, size+len(data))
 	iv := cipherData[:size]
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	stream := cipher.NewCTR(block, iv)
 	stream.XORKeyStream(cipherData[size:], data)
 	h := hmac.New(sha1.New, cipherData)
 	h.Write(data)
-	return base64.RawURLEncoding.EncodeToString(append(cipherData, h.Sum(nil)...)), nil
+	return append(cipherData, h.Sum(nil)...), nil
 }
 
-// DecryptText decrypt data with key
-func (c *Crypto) DecryptText(key, cipherText string) (string, error) {
-	cipherData, err := base64.RawURLEncoding.DecodeString(cipherText)
-	if err != nil {
-		return "", err
-	}
-
+// Decrypt decrypt data with key
+func (c *Crypto) Decrypt(key, cipherData []byte) ([]byte, error) {
 	size := aes.BlockSize
 	if len(cipherData) < size+sha1.Size {
-		return "", errors.New("invalid data")
+		return nil, errors.New("invalid data")
 	}
 
-	k := c.hmacSum([]byte(key))
+	k := c.hmacSum(key)
 	checkSum := cipherData[len(cipherData)-sha1.Size:]
 	cipherData = cipherData[:len(cipherData)-sha1.Size]
 	block, err := aes.NewCipher(k)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	data := make([]byte, len(cipherData)-size)
@@ -106,7 +100,30 @@ func (c *Crypto) DecryptText(key, cipherText string) (string, error) {
 	h := hmac.New(sha1.New, cipherData)
 	h.Write(data)
 	if subtle.ConstantTimeCompare(h.Sum(nil), checkSum) != 1 {
-		return "", errors.New("invalid data")
+		return nil, errors.New("invalid data")
+	}
+	return data, nil
+}
+
+// EncryptText encrypt data with key
+func (c *Crypto) EncryptText(key, plainText string) (string, error) {
+	data, err := c.Encrypt([]byte(key), []byte(plainText))
+	if err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(data), nil
+}
+
+// DecryptText decrypt data with key
+func (c *Crypto) DecryptText(key, cipherText string) (string, error) {
+	cipherData, err := base64.RawURLEncoding.DecodeString(cipherText)
+	if err != nil {
+		return "", err
+	}
+
+	data, err := c.Decrypt([]byte(key), cipherData)
+	if err != nil {
+		return "", err
 	}
 	return string(data), nil
 }

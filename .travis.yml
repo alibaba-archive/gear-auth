@@ -4,7 +4,13 @@ go:
   - 1.7
 before_install:
   - go get -t -v ./...
+  - go get github.com/modocache/gover
   - go get github.com/mattn/goveralls
 script:
-  - go test -coverprofile=gear-auth.coverprofile
-  - goveralls -coverprofile=gear-auth.coverprofile -service=travis-ci
+  - go test -coverprofile=auth.coverprofile
+  - go test -coverprofile=crypto.coverprofile ./crypto
+  - go test -coverprofile=jwt.coverprofile ./jwt
+  - go test -coverprofile=pbkdf2.coverprofile ./pbkdf2
+  - gover
+  - go tool cover -html=gover.coverprofile
+  - goveralls -coverprofile=gover.coverprofile -service=travis-ci
