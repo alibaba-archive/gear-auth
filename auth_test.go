@@ -36,7 +36,7 @@ func TestGearAuth(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(401, res.StatusCode)
 		body, _ := res.Text()
-		assert.Equal("No token found", body)
+		assert.Equal("no token found", body)
 
 		a1 := New([]byte("wrong key"))
 		claims := jwt.Claims{}

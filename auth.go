@@ -26,16 +26,16 @@ type TokenExtractor func(ctx *gear.Context) (token string)
 // Auth is helper type. It combine JWT and Crypto object, and some useful mothod for JWT.
 // You can use it as a gear middleware.
 type Auth struct {
-	c *crypto.Crypto
-	j *jwt.JWT
-	e TokenExtractor
+	c  *crypto.Crypto
+	j  *jwt.JWT
+	ex TokenExtractor
 }
 
 // New returns a Auth instance.
 func New(keys ...interface{}) *Auth {
 	a := new(Auth)
 	a.SetJWT(jwt.New(keys...))
-	a.e = func(ctx *gear.Context) (token string) {
+	a.ex = func(ctx *gear.Context) (token string) {
 		if val := ctx.Get("Authorization"); strings.HasPrefix(val, "Bearer ") {
 			token = val[7:]
 		} else {
@@ -67,8 +67,8 @@ func (a *Auth) SetJWT(j *jwt.JWT) {
 }
 
 // SetTokenParser set a custom tokenExtractor to auth. Default to:
-func (a *Auth) SetTokenParser(e TokenExtractor) {
-	a.e = e
+func (a *Auth) SetTokenParser(ex TokenExtractor) {
+	a.ex = ex
 }
 
 // New implements gear.Any interface, then we can use it with ctx.Any:
@@ -81,11 +81,19 @@ func (a *Auth) SetTokenParser(e TokenExtractor) {
 //
 // that is auth.FromCtx doing for us.
 //
-func (a *Auth) New(ctx *gear.Context) (interface{}, error) {
-	if token := a.e(ctx); token != "" {
-		return a.j.Verify(token)
+func (a *Auth) New(ctx *gear.Context) (val interface{}, err error) {
+	if token := a.ex(ctx); token != "" {
+		val, err = a.j.Verify(token)
 	}
-	return nil, &gear.Error{Code: 401, Msg: "No token found"}
+	if val == nil {
+		// create a empty jwt.Claims
+		val = josejwt.Claims{}
+		if err == nil {
+			err = &gear.Error{Code: 401, Msg: "no token found"}
+		}
+	}
+	ctx.SetAny(a, val)
+	return
 }
 
 // FromCtx will parse and validate token from the ctx, and return it as jwt.Claims.
@@ -95,13 +103,8 @@ func (a *Auth) New(ctx *gear.Context) (interface{}, error) {
 //  fmt.Println(claims, err)
 //
 func (a *Auth) FromCtx(ctx *gear.Context) (josejwt.Claims, error) {
-	any, err := ctx.Any(a)
-	if err == nil {
-		return any.(josejwt.Claims), nil
-	}
-	claims := josejwt.Claims{}
-	ctx.SetAny(a, claims)
-	return claims, err
+	val, err := ctx.Any(a)
+	return val.(josejwt.Claims), err
 }
 
 // Serve implements gear.Handler interface. We can use it as middleware.
