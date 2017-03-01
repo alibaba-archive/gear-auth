@@ -28,14 +28,14 @@ func New(salt []byte) *Crypto {
 
 // AESKey returns a string key to encrypt or decrypt text.
 func (c *Crypto) AESKey(a, b string) (key string) {
-	buf := c.hmacSum(append(c.hmacSum([]byte(a)), []byte(b)...))
+	buf := c.HmacSum(append(c.HmacSum([]byte(a)), []byte(b)...))
 	return base64.RawURLEncoding.EncodeToString(buf)
 }
 
 // SignPass returns a string checkPass by the user' name and pass.
 func (c *Crypto) SignPass(name, pass string) (checkPass string) {
 	iv := RandBytes(8)
-	b := c.signPass(iv, append(c.hmacSum([]byte(name)), []byte(pass)...))
+	b := c.signPass(iv, append(c.HmacSum([]byte(name)), []byte(pass)...))
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
@@ -52,13 +52,13 @@ func (c *Crypto) VerifyPass(name, pass, checkPass string) bool {
 	if err != nil {
 		return false
 	}
-	b := c.signPass(a[32:], append(c.hmacSum([]byte(name)), []byte(pass)...))
+	b := c.signPass(a[32:], append(c.HmacSum([]byte(name)), []byte(pass)...))
 	return subtle.ConstantTimeCompare(a, b) == 1
 }
 
 // Encrypt encrypt data with key
 func (c *Crypto) Encrypt(key, data []byte) ([]byte, error) {
-	k := c.hmacSum(key)
+	k := c.HmacSum(key)
 	size := aes.BlockSize
 	block, err := aes.NewCipher(k)
 	if err != nil {
@@ -85,7 +85,7 @@ func (c *Crypto) Decrypt(key, cipherData []byte) ([]byte, error) {
 		return nil, errors.New("invalid data")
 	}
 
-	k := c.hmacSum(key)
+	k := c.HmacSum(key)
 	checkSum := cipherData[len(cipherData)-sha1.Size:]
 	cipherData = cipherData[:len(cipherData)-sha1.Size]
 	block, err := aes.NewCipher(k)
@@ -128,7 +128,8 @@ func (c *Crypto) DecryptText(key, cipherText string) (string, error) {
 	return string(data), nil
 }
 
-func (c *Crypto) hmacSum(data []byte) []byte {
+// HmacSum return hash bytes with salt.
+func (c *Crypto) HmacSum(data []byte) []byte {
 	h := hmac.New(sha256.New, c.salt)
 	h.Write(data)
 	return h.Sum(nil)
