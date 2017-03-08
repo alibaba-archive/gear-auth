@@ -9,6 +9,7 @@ import (
 	"github.com/teambition/gear-auth/jwt"
 )
 
+// Version ...
 const Version = "1.4.4"
 
 // TokenExtractor is a function that takes a gear.Context as input and
@@ -120,9 +121,6 @@ func (a *Auth) FromCtx(ctx *gear.Context) (josejwt.Claims, error) {
 //  app.Use(auther.Serve)
 //
 func (a *Auth) Serve(ctx *gear.Context) error {
-	claims, err := a.New(ctx)
-	if err == nil {
-		ctx.SetAny(a, claims)
-	}
+	_, err := ctx.Any(a)
 	return err
 }

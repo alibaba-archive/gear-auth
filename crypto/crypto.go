@@ -32,10 +32,10 @@ func (c *Crypto) AESKey(a, b string) (key string) {
 	return base64.RawURLEncoding.EncodeToString(buf)
 }
 
-// SignPass returns a string checkPass by the user' name and pass.
-func (c *Crypto) SignPass(name, pass string) (checkPass string) {
+// SignPass returns a string checkPass by the user' id and pass.
+func (c *Crypto) SignPass(id, pass string) (checkPass string) {
 	iv := RandBytes(8)
-	b := c.signPass(iv, append(c.HmacSum([]byte(name)), []byte(pass)...))
+	b := c.signPass(iv, append(c.HmacSum([]byte(id)), []byte(pass)...))
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
@@ -46,13 +46,13 @@ func (c *Crypto) signPass(iv, pass []byte) []byte {
 	return append(b, iv...)
 }
 
-// VerifyPass verify user' name and password with a checkPass(stored in database)
-func (c *Crypto) VerifyPass(name, pass, checkPass string) bool {
+// VerifyPass verify user' id and password with a checkPass(stored in database)
+func (c *Crypto) VerifyPass(id, pass, checkPass string) bool {
 	a, err := base64.RawURLEncoding.DecodeString(checkPass)
 	if err != nil {
 		return false
 	}
-	b := c.signPass(a[32:], append(c.HmacSum([]byte(name)), []byte(pass)...))
+	b := c.signPass(a[32:], append(c.HmacSum([]byte(id)), []byte(pass)...))
 	return subtle.ConstantTimeCompare(a, b) == 1
 }
 
