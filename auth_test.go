@@ -11,7 +11,6 @@ import (
 	"github.com/mozillazg/request"
 	"github.com/stretchr/testify/assert"
 	"github.com/teambition/gear"
-	"github.com/teambition/gear-auth/crypto"
 )
 
 func NewRequst() *request.Request {
@@ -137,15 +136,5 @@ func TestGearAuth(t *testing.T) {
 		assert.Nil(err)
 		assert.Equal(401, res.StatusCode)
 		res.Body.Close()
-	})
-
-	t.Run("should work with Crypto", func(t *testing.T) {
-		assert := assert.New(t)
-
-		a := New([]byte("my key 1"))
-		assert.Nil(a.Crypto())
-		c := crypto.New([]byte("my key 1"))
-		a.SetCrypto(c)
-		assert.Equal(c, a.Crypto())
 	})
 }

@@ -18,7 +18,7 @@ type KeyPair struct {
 
 // JWT represents a module. it can be use to create, decode or verify JWT token.
 type JWT struct {
-	keys      []interface{}
+	keys      rotating
 	expiresIn time.Duration
 	issuer    string
 	method    josecrypto.SigningMethod
@@ -74,16 +74,20 @@ func (j *JWT) Decode(token string) (josejwt.Claims, error) {
 }
 
 // Verify parse a string token and validate it with keys, signingMethods and validator in rotationally.
-func (j *JWT) Verify(token string) (josejwt.Claims, error) {
+func (j *JWT) Verify(token string) (claims josejwt.Claims, err error) {
 	jwtToken, err := josejws.ParseJWT([]byte(token))
 	if err == nil {
-		for _, key := range j.keys { // key rotation
+		if j.keys.Verify(func(key interface{}) bool { // key rotation
 			if k, ok := key.(KeyPair); ok { // try to extract PublicKey
 				key = k.PublicKey
 			}
 			if err = jwtToken.Validate(key, j.method, j.validator...); err == nil {
-				return jwtToken.Claims(), nil
+				claims = jwtToken.Claims()
+				return true
 			}
+			return false
+		}) >= 0 {
+			return
 		}
 	}
 	return nil, &textproto.Error{Code: 401, Msg: err.Error()}
@@ -152,17 +156,32 @@ func Decode(token string) (josejwt.Claims, error) {
 }
 
 // Verify parse a string token and validate it with keys, signingMethods in rotationally.
-func Verify(token string, method josecrypto.SigningMethod, keys ...interface{}) (josejwt.Claims, error) {
+func Verify(token string, method josecrypto.SigningMethod, keys ...interface{}) (claims josejwt.Claims, err error) {
 	jwtToken, err := josejws.ParseJWT([]byte(token))
 	if err == nil {
-		for _, key := range keys { // key rotation
+		if rotating(keys).Verify(func(key interface{}) bool {
 			if k, ok := key.(KeyPair); ok { // try to extract PublicKey
 				key = k.PublicKey
 			}
 			if err = jwtToken.Validate(key, method); err == nil {
-				return jwtToken.Claims(), nil
+				claims = jwtToken.Claims()
+				return true
 			}
+			return false
+		}) >= 0 {
+			return
 		}
 	}
 	return nil, &textproto.Error{Code: 401, Msg: err.Error()}
+}
+
+type rotating []interface{}
+
+func (r rotating) Verify(v func(interface{}) bool) (index int) {
+	for i, key := range r { // key rotation
+		if v(key) {
+			return i
+		}
+	}
+	return -1
 }

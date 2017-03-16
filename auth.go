@@ -5,12 +5,11 @@ import (
 
 	josejwt "github.com/SermoDigital/jose/jwt"
 	"github.com/teambition/gear"
-	"github.com/teambition/gear-auth/crypto"
 	"github.com/teambition/gear-auth/jwt"
 )
 
 // Version ...
-const Version = "1.4.4"
+const Version = "1.5.0"
 
 // TokenExtractor is a function that takes a gear.Context as input and
 // returns either a string token or an empty string. Default to:
@@ -29,7 +28,6 @@ type TokenExtractor func(ctx *gear.Context) (token string)
 // Auth is helper type. It combine JWT and Crypto object, and some useful mothod for JWT.
 // You can use it as a gear middleware.
 type Auth struct {
-	c  *crypto.Crypto
 	j  *jwt.JWT
 	ex TokenExtractor
 }
@@ -49,19 +47,9 @@ func New(keys ...interface{}) *Auth {
 	return a
 }
 
-// Crypto returns internal Crypto instance. Default to nil, you should set it with SetCrypto
-func (a *Auth) Crypto() *crypto.Crypto {
-	return a.c
-}
-
 // JWT returns internal JWT instance.
 func (a *Auth) JWT() *jwt.JWT {
 	return a.j
-}
-
-// SetCrypto sets a Crypto instance to auth.
-func (a *Auth) SetCrypto(c *crypto.Crypto) {
-	a.c = c
 }
 
 // SetJWT set a JWT instance to auth.
