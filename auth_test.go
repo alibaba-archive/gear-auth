@@ -23,6 +23,9 @@ func TestGearAuth(t *testing.T) {
 		assert := assert.New(t)
 
 		a := New([]byte("my key"))
+		a.SetSkipper(func(ctx *gear.Context) bool {
+			return ctx.Path == "/skip"
+		})
 		app := gear.New()
 		app.UseHandler(a)
 		srv := app.Start()
@@ -45,6 +48,10 @@ func TestGearAuth(t *testing.T) {
 		res, err = req.Get(host)
 		assert.Nil(err)
 		assert.Equal(401, res.StatusCode)
+
+		res, err = req.Get(host + "/skip")
+		assert.Nil(err)
+		assert.Equal(421, res.StatusCode)
 	})
 
 	t.Run("should work", func(t *testing.T) {

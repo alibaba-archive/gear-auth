@@ -9,7 +9,7 @@ import (
 )
 
 // Version ...
-const Version = "1.5.0"
+const Version = "1.5.1"
 
 // TokenExtractor is a function that takes a gear.Context as input and
 // returns either a string token or an empty string. Default to:
@@ -28,11 +28,15 @@ type TokenExtractor func(ctx *gear.Context) (token string)
 // Auth is helper type. It combine JWT and Crypto object, and some useful mothod for JWT.
 // You can use it as a gear middleware.
 type Auth struct {
-	j  *jwt.JWT
-	ex TokenExtractor
+	j       *jwt.JWT
+	ex      TokenExtractor
+	skipper func(*gear.Context) bool
 }
 
 // New returns a Auth instance.
+//
+//  auther := auth.New([]byte("my key"))
+//
 func New(keys ...interface{}) *Auth {
 	a := new(Auth)
 	a.SetJWT(jwt.New(keys...))
@@ -57,9 +61,16 @@ func (a *Auth) SetJWT(j *jwt.JWT) {
 	a.j = j
 }
 
-// SetTokenParser set a custom tokenExtractor to auth. Default to:
+// SetTokenParser set a custom tokenExtractor to auth.
 func (a *Auth) SetTokenParser(ex TokenExtractor) {
 	a.ex = ex
+}
+
+// SetSkipper set a skip function to auth.
+// If skip function return true, the auth middleware process will be skipped.
+func (a *Auth) SetSkipper(fn func(*gear.Context) bool) *Auth {
+	a.skipper = fn
+	return a
 }
 
 // New implements gear.Any interface, then we can use it with ctx.Any:
@@ -109,6 +120,9 @@ func (a *Auth) FromCtx(ctx *gear.Context) (josejwt.Claims, error) {
 //  app.Use(auther.Serve)
 //
 func (a *Auth) Serve(ctx *gear.Context) error {
+	if a.skipper != nil && a.skipper(ctx) {
+		return nil
+	}
 	_, err := ctx.Any(a)
 	return err
 }
