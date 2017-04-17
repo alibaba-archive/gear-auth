@@ -13,7 +13,7 @@ https://github.com/teambition/crypto-go
 
 ## Demo
 
-### Create a token and verify it.
+### Create a token and verify it
 
 ```go
 auther := auth.New([]byte("key1"))
@@ -23,7 +23,7 @@ fmt.Println(claims.Get("test"))
 // Output: "OK"
 ```
 
-### Use with Gear.
+### Use with Gear
 
 ```go
 package main

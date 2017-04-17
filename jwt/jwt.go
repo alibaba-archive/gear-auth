@@ -113,7 +113,7 @@ func (j *JWT) SetExpiresIn(expiresIn time.Duration) {
 // SetKeys set new keys to jwt.
 func (j *JWT) SetKeys(keys ...interface{}) {
 	if len(keys) == 0 || keys[0] == nil {
-		panic(errors.New("Invalid keys"))
+		panic(errors.New("invalid keys"))
 	}
 	j.keys = keys
 }
@@ -121,7 +121,7 @@ func (j *JWT) SetKeys(keys ...interface{}) {
 // SetMethods set one or more signing methods which can be used rotational.
 func (j *JWT) SetMethods(method josecrypto.SigningMethod) {
 	if method == nil {
-		panic(errors.New("Invalid signing method"))
+		panic(errors.New("invalid signing method"))
 	}
 	j.method = method
 }
@@ -129,7 +129,7 @@ func (j *JWT) SetMethods(method josecrypto.SigningMethod) {
 // SetValidator set a custom jwt.Validator to jwt. Default to nil.
 func (j *JWT) SetValidator(validator *josejwt.Validator) {
 	if validator == nil {
-		panic(errors.New("Invalid validator"))
+		panic(errors.New("invalid validator"))
 	}
 	j.validator = []*josejwt.Validator{validator}
 }
@@ -184,4 +184,12 @@ func (r rotating) Verify(v func(interface{}) bool) (index int) {
 		}
 	}
 	return -1
+}
+
+// StrToKeys converts string slice to keys slice.
+func StrToKeys(keys ...string) (res []interface{}) {
+	for _, key := range keys {
+		res = append(res, []byte(key))
+	}
+	return
 }

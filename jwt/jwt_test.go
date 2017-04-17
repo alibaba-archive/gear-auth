@@ -29,7 +29,7 @@ func TestJWT(t *testing.T) {
 
 		jwter0 := New()
 		jwter1 := New([]byte("key1"))
-		jwter2 := New([]byte("key2"))
+		jwter2 := New(StrToKeys("key2")...)
 		assert.Equal(1, len(jwter1.keys))
 		assert.Equal(crypto.SigningMethodHS256, jwter1.method)
 

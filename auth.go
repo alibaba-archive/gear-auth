@@ -9,7 +9,7 @@ import (
 )
 
 // Version ...
-const Version = "1.5.1"
+const Version = "1.5.2"
 
 // TokenExtractor is a function that takes a gear.Context as input and
 // returns either a string token or an empty string. Default to:
