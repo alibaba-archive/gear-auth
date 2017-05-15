@@ -45,7 +45,7 @@ func NewRequst() *request.Request {
 }
 
 func main() {
-  auther := auth.New([]byte("some_key")))
+  auther := auth.New([]byte("some_key"))
   auther.JWT().SetIssuer("Gear")
   // auther.JWT().SetExpiration(time.Hour * 24)
 
@@ -71,7 +71,7 @@ func main() {
   claims := jwt.Claims{}
   claims.Set("Hello", "world")
   token, _ := auther.JWT().Sign(claims)
-  req.Headers["Authorization"] = "BEARER " + token
+  req.Headers["Authorization"] = "Bearer " + token
   res, _ := req.Get(host)
   defer res.Body.Close()
 
