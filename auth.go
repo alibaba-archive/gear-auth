@@ -9,7 +9,7 @@ import (
 )
 
 // Version ...
-const Version = "1.5.2"
+const Version = "1.5.3"
 
 // TokenExtractor is a function that takes a gear.Context as input and
 // returns either a string token or an empty string. Default to:
@@ -91,7 +91,9 @@ func (a *Auth) New(ctx *gear.Context) (val interface{}, err error) {
 		// create a empty jwt.Claims
 		val = josejwt.Claims{}
 		if err == nil {
-			err = &gear.Error{Code: 401, Msg: "no token found"}
+			err = gear.ErrUnauthorized.WithMsg("no token found")
+		} else {
+			err = gear.ErrUnauthorized.From(err)
 		}
 	}
 	ctx.SetAny(a, val)
