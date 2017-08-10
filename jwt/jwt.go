@@ -21,6 +21,7 @@ type JWT struct {
 	keys      rotating
 	expiresIn time.Duration
 	issuer    string
+	audience  []string
 	method    josecrypto.SigningMethod
 	validator []*josejwt.Validator
 }
@@ -55,6 +56,9 @@ func (j *JWT) Sign(content map[string]interface{}, expiresIn ...time.Duration) (
 	claims := josejwt.Claims(content)
 	if j.issuer != "" {
 		claims.SetIssuer(j.issuer)
+	}
+	if len(j.audience) > 0 {
+		claims.SetAudience(j.audience...)
 	}
 	if len(expiresIn) > 0 {
 		if expiresIn[0] > 0 {
@@ -97,6 +101,12 @@ func (j *JWT) Verify(token string) (claims josejwt.Claims, err error) {
 // Default to "", no "iss" will be added.
 func (j *JWT) SetIssuer(issuer string) {
 	j.issuer = issuer
+}
+
+// SetAudience sets claim "aud" per its type in
+// https://tools.ietf.org/html/rfc7519#section-4.1.3
+func (j *JWT) SetAudience(audience ...string) {
+	j.audience = audience
 }
 
 // GetExpiresIn returns jwt's expiration.

@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -157,6 +158,25 @@ func TestJWT(t *testing.T) {
 		claims, _ = jwter.Verify(token)
 		assert.Equal("OK", claims.Get("test"))
 		assert.Equal("Gear", claims.Get("iss"))
+	})
+
+	t.Run("SetAudience", func(t *testing.T) {
+		assert := assert.New(t)
+
+		jwter := New([]byte("key1"))
+		token, err := jwter.Sign(map[string]interface{}{"test": "OK"})
+		assert.Nil(err)
+		claims, _ := jwter.Verify(token)
+		assert.Equal("OK", claims.Get("test"))
+		assert.Nil(claims.Get("iss"))
+
+		jwter.SetAudience("Gear")
+		token, err = jwter.Sign(map[string]interface{}{"test": "OK"})
+		fmt.Println(10000, token)
+		assert.Nil(err)
+		claims, _ = jwter.Verify(token)
+		assert.Equal("OK", claims.Get("test"))
+		assert.Equal("Gear", claims.Get("aud"))
 	})
 
 	t.Run("SetExpiresIn", func(t *testing.T) {
