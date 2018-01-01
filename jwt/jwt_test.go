@@ -1,7 +1,6 @@
 package jwt
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -22,6 +21,7 @@ func TestJWT(t *testing.T) {
 		token, err := jwter.Sign(josejwt.Claims{"test": "OK"})
 		assert.Nil(err)
 		claims, _ := jwter.Verify(token)
+		assert.True(claims.Has("iat"))
 		assert.Equal("OK", claims.Get("test"))
 	})
 
@@ -75,9 +75,7 @@ func TestJWT(t *testing.T) {
 		assert := assert.New(t)
 
 		jwter := New([]byte("key1"))
-		token, err := jwter.Sign(map[string]interface{}{})
-		assert.NotNil(err)
-		token, err = jwter.Sign(map[string]interface{}{"test": "OK"})
+		token, err := jwter.Sign(map[string]interface{}{"test": "OK"})
 		assert.Nil(err)
 		claims, _ := jwter.Verify(token)
 		assert.Equal("OK", claims.Get("test"))
@@ -172,7 +170,6 @@ func TestJWT(t *testing.T) {
 
 		jwter.SetAudience("Gear")
 		token, err = jwter.Sign(map[string]interface{}{"test": "OK"})
-		fmt.Println(10000, token)
 		assert.Nil(err)
 		claims, _ = jwter.Verify(token)
 		assert.Equal("OK", claims.Get("test"))

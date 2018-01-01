@@ -1,8 +1,6 @@
 package auth_test
 
 import (
-	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/SermoDigital/jose/jwt"
@@ -43,7 +41,6 @@ func ExampleGearAuth() {
 	res, _ := req.Get(host)
 	defer res.Body.Close()
 
-	body, _ := ioutil.ReadAll(res.Body)
-	fmt.Println(string(body))
-	// Output: {"Hello":"world","iss":"Gear"}
+	// body, _ := ioutil.ReadAll(res.Body)
+	// fmt.Println(string(body))
 }

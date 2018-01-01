@@ -149,6 +149,9 @@ func Sign(claims josejwt.Claims, method josecrypto.SigningMethod, key interface{
 	if k, ok := key.(KeyPair); ok { // try to extract PrivateKey
 		key = k.PrivateKey
 	}
+	if !claims.Has("iat") {
+		claims.Set("iat", time.Now().Unix())
+	}
 	buf, err := josejws.NewJWT(josejws.Claims(claims), method).Serialize(key)
 	if err == nil {
 		return string(buf), nil
