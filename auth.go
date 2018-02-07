@@ -9,7 +9,7 @@ import (
 )
 
 // Version ...
-const Version = "1.5.5"
+const Version = "1.6.0"
 
 // TokenExtractor is a function that takes a gear.Context as input and
 // returns either a string token or an empty string. Default to:
@@ -41,7 +41,7 @@ func New(keys ...interface{}) *Auth {
 	a := new(Auth)
 	a.SetJWT(jwt.New(keys...))
 	a.ex = func(ctx *gear.Context) (token string) {
-		if val := ctx.Get("Authorization"); strings.HasPrefix(val, "Bearer ") {
+		if val := ctx.GetHeader("Authorization"); strings.HasPrefix(val, "Bearer ") {
 			token = val[7:]
 		} else {
 			token = ctx.Query("access_token")

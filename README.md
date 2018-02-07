@@ -23,6 +23,44 @@ fmt.Println(claims.Get("test"))
 // Output: "OK"
 ```
 
+### jwt with ED25519 and HS256 Alg backup
+
+```go
+package main
+
+import (
+	"fmt"
+
+	josecrypto "github.com/SermoDigital/jose/crypto"
+	josejws "github.com/SermoDigital/jose/jws"
+	"github.com/teambition/gear-auth/jwt"
+	"github.com/teambition/gear-auth/jwt/ed25519"
+)
+
+func main() {
+	publicKey, privateKey := ed25519.GenerateKey()
+	fmt.Println("publicKey:", publicKey)
+	fmt.Println("privateKey:", privateKey)
+
+	keyPair, err := ed25519.KeyPairFrom(publicKey, privateKey)
+	if err != nil {
+		panic(err)
+	}
+
+	jwter := jwt.New(keyPair)
+	jwter.SetMethods(ed25519.SigningMethodED25519)
+	jwter.SetBackupSigning(josecrypto.SigningMethodHS256, []byte("old key 1"), []byte("old key 2"))
+
+	token, err := jwter.Sign(josejws.Claims{"test": "OK"})
+	fmt.Println(err, token)
+
+	claims, err := jwter.Verify(token)
+	fmt.Println(err, claims)
+
+	// claims, err = jwter.Verify(some_old_HS256_token)
+}
+```
+
 ### Use with Gear
 
 ```go

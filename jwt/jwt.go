@@ -18,12 +18,14 @@ type KeyPair struct {
 
 // JWT represents a module. it can be use to create, decode or verify JWT token.
 type JWT struct {
-	keys      rotating
-	expiresIn time.Duration
-	issuer    string
-	audience  []string
-	method    josecrypto.SigningMethod
-	validator []*josejwt.Validator
+	keys         rotating
+	expiresIn    time.Duration
+	issuer       string
+	audience     []string
+	method       josecrypto.SigningMethod
+	validator    []*josejwt.Validator
+	backupKeys   rotating
+	backupMethod josecrypto.SigningMethod
 }
 
 // New returns a JWT instance.
@@ -80,20 +82,17 @@ func (j *JWT) Decode(token string) (josejwt.Claims, error) {
 // Verify parse a string token and validate it with keys, signingMethods and validator in rotationally.
 func (j *JWT) Verify(token string) (claims josejwt.Claims, err error) {
 	jwtToken, err := josejws.ParseJWT([]byte(token))
+
 	if err == nil {
-		if j.keys.Verify(func(key interface{}) bool { // key rotation
-			if k, ok := key.(KeyPair); ok { // try to extract PublicKey
-				key = k.PublicKey
-			}
-			if err = jwtToken.Validate(key, j.method, j.validator...); err == nil {
-				claims = jwtToken.Claims()
-				return true
-			}
-			return false
-		}) >= 0 {
-			return
+		claims, err = Verify(jwtToken, j.method, j.keys, j.validator...)
+		if err != nil && j.backupKeys != nil {
+			claims, err = Verify(jwtToken, j.backupMethod, j.backupKeys, j.validator...)
+		}
+		if err == nil {
+			return claims, nil
 		}
 	}
+
 	return nil, &textproto.Error{Code: 401, Msg: err.Error()}
 }
 
@@ -144,6 +143,15 @@ func (j *JWT) SetValidator(validator *josejwt.Validator) {
 	j.validator = []*josejwt.Validator{validator}
 }
 
+// SetBackupSigning add a backup signing for Verify method, not for Sign method.
+func (j *JWT) SetBackupSigning(method josecrypto.SigningMethod, keys ...interface{}) {
+	if len(keys) == 0 || keys[0] == nil {
+		panic(errors.New("invalid keys"))
+	}
+	j.backupMethod = method
+	j.backupKeys = keys
+}
+
 // Sign creates a JWT token with the given claims, signing method and key.
 func Sign(claims josejwt.Claims, method josecrypto.SigningMethod, key interface{}) (string, error) {
 	if k, ok := key.(KeyPair); ok { // try to extract PrivateKey
@@ -169,23 +177,20 @@ func Decode(token string) (josejwt.Claims, error) {
 }
 
 // Verify parse a string token and validate it with keys, signingMethods in rotationally.
-func Verify(token string, method josecrypto.SigningMethod, keys ...interface{}) (claims josejwt.Claims, err error) {
-	jwtToken, err := josejws.ParseJWT([]byte(token))
-	if err == nil {
-		if rotating(keys).Verify(func(key interface{}) bool {
-			if k, ok := key.(KeyPair); ok { // try to extract PublicKey
-				key = k.PublicKey
-			}
-			if err = jwtToken.Validate(key, method); err == nil {
-				claims = jwtToken.Claims()
-				return true
-			}
-			return false
-		}) >= 0 {
-			return
+func Verify(token josejwt.JWT, method josecrypto.SigningMethod, keys []interface{}, v ...*josejwt.Validator) (claims josejwt.Claims, err error) {
+	if rotating(keys).Verify(func(key interface{}) bool {
+		if k, ok := key.(KeyPair); ok { // try to extract PublicKey
+			key = k.PublicKey
 		}
+		if err = token.Validate(key, method, v...); err == nil {
+			claims = token.Claims()
+			return true
+		}
+		return false
+	}) >= 0 {
+		return claims, nil
 	}
-	return nil, &textproto.Error{Code: 401, Msg: err.Error()}
+	return nil, err
 }
 
 type rotating []interface{}

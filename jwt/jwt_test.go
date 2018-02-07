@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SermoDigital/jose/crypto"
+	joseCrypto "github.com/SermoDigital/jose/crypto"
 	josejws "github.com/SermoDigital/jose/jws"
 	josejwt "github.com/SermoDigital/jose/jwt"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +16,7 @@ func TestJWT(t *testing.T) {
 
 		jwter := New()
 		assert.Equal(1, len(jwter.keys))
-		assert.Equal(crypto.Unsecured, jwter.method)
+		assert.Equal(joseCrypto.Unsecured, jwter.method)
 
 		token, err := jwter.Sign(josejwt.Claims{"test": "OK"})
 		assert.Nil(err)
@@ -32,7 +32,7 @@ func TestJWT(t *testing.T) {
 		jwter1 := New([]byte("key1"))
 		jwter2 := New(StrToKeys("key2")...)
 		assert.Equal(1, len(jwter1.keys))
-		assert.Equal(crypto.SigningMethodHS256, jwter1.method)
+		assert.Equal(joseCrypto.SigningMethodHS256, jwter1.method)
 
 		token, err := jwter1.Sign(josejwt.Claims{"test": "OK"})
 		assert.Nil(err)
@@ -48,7 +48,8 @@ func TestJWT(t *testing.T) {
 		_, err = jwter1.Verify(token)
 		assert.NotNil(err)
 
-		_, err = Verify(token, crypto.SigningMethodHS256, []byte("key1"))
+		jwtToken, _ := josejws.ParseJWT([]byte(token))
+		_, err = Verify(jwtToken, joseCrypto.SigningMethodHS256, []interface{}{[]byte("key1")})
 		assert.NotNil(err)
 	})
 
@@ -80,7 +81,8 @@ func TestJWT(t *testing.T) {
 		claims, _ := jwter.Verify(token)
 		assert.Equal("OK", claims.Get("test"))
 
-		claims, _ = Verify(token, crypto.SigningMethodHS256, []byte("key1"))
+		jwtToken, _ := josejws.ParseJWT([]byte(token))
+		claims, _ = Verify(jwtToken, joseCrypto.SigningMethodHS256, []interface{}{[]byte("key1")})
 		assert.Equal("OK", claims.Get("test"))
 	})
 
@@ -93,7 +95,8 @@ func TestJWT(t *testing.T) {
 		claims, _ := jwter.Verify(token)
 		assert.Equal("OK", claims.Get("test"))
 
-		claims, _ = Verify(token, crypto.SigningMethodHS256, []byte("key1"))
+		jwtToken, _ := josejws.ParseJWT([]byte(token))
+		claims, _ = Verify(jwtToken, joseCrypto.SigningMethodHS256, []interface{}{[]byte("key1")})
 		assert.Equal("OK", claims.Get("test"))
 	})
 
@@ -220,7 +223,7 @@ func TestJWT(t *testing.T) {
 		assert.Panics(func() {
 			jwter.SetMethods(nil)
 		})
-		jwter.SetMethods(crypto.SigningMethodHS384)
+		jwter.SetMethods(joseCrypto.SigningMethodHS384)
 		token, err := jwter.Sign(josejwt.Claims{"test": "OK"})
 		assert.Nil(err)
 		claims, _ := jwter.Verify(token)
@@ -255,7 +258,7 @@ func TestJWT(t *testing.T) {
 	t.Run("support SigningMethodRS256", func(t *testing.T) {
 		assert := assert.New(t)
 		// 512 bit, PKCS#8
-		privateKey, _ := crypto.ParseRSAPrivateKeyFromPEM([]byte(`-----BEGIN PRIVATE KEY-----
+		privateKey, _ := joseCrypto.ParseRSAPrivateKeyFromPEM([]byte(`-----BEGIN PRIVATE KEY-----
 MIIBVQIBADANBgkqhkiG9w0BAQEFAASCAT8wggE7AgEAAkEAwNcqwbtB4MZyNI27
 +u/wPJ7t72lp5EBsu5aJWFCEUu98o4kforWRkPP1LLc8oL03co7Wglin2/EM2xn6
 /8VSnwIDAQABAkEAj+R+DQ0zfQvW0AwqhnZfZnyYwpp/30eLWvZbCcEa2954Ehwl
@@ -266,7 +269,7 @@ fUrSNDsdPH8UQ9L03zta+wPsImVBjqECIHiRnbty/YtVop43mMpH874DJfaYlxs5
 UwLZRrXB/rC5
 -----END PRIVATE KEY-----`))
 
-		publicKey, _ := crypto.ParseRSAPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
+		publicKey, _ := joseCrypto.ParseRSAPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
 MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAMDXKsG7QeDGcjSNu/rv8Dye7e9paeRA
 bLuWiVhQhFLvfKOJH6K1kZDz9Sy3PKC9N3KO1oJYp9vxDNsZ+v/FUp8CAwEAAQ==
 -----END PUBLIC KEY-----`))
@@ -275,24 +278,25 @@ bLuWiVhQhFLvfKOJH6K1kZDz9Sy3PKC9N3KO1oJYp9vxDNsZ+v/FUp8CAwEAAQ==
 			PrivateKey: privateKey,
 			PublicKey:  publicKey,
 		})
-		jwter.SetMethods(crypto.SigningMethodRS256)
+		jwter.SetMethods(joseCrypto.SigningMethodRS256)
 		token, err := jwter.Sign(josejws.Claims{"test": "OK"})
 		// eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoiT0sifQ.mhv0HslKGE3j5w-1jQLAr_jNBXeaIObaJw5Nn9KpaM5pcv9PmXiBG_9S7-a2I4lO_dZtI__b6Y5Ym2z7kP4z5Q
 		assert.Nil(err)
 		claims, _ := jwter.Verify(token)
 		assert.Equal("OK", claims.Get("test"))
 
-		claims, _ = Verify(token, crypto.SigningMethodRS256, KeyPair{
+		jwtToken, _ := josejws.ParseJWT([]byte(token))
+		claims, _ = Verify(jwtToken, joseCrypto.SigningMethodRS256, []interface{}{KeyPair{
 			PrivateKey: privateKey,
 			PublicKey:  publicKey,
-		})
+		}})
 		assert.Equal("OK", claims.Get("test"))
 	})
 
 	t.Run("support SigningMethodPS256", func(t *testing.T) {
 		assert := assert.New(t)
 		// 512 bit, PKCS#8
-		privateKey, _ := crypto.ParseRSAPrivateKeyFromPEM([]byte(`-----BEGIN PRIVATE KEY-----
+		privateKey, _ := joseCrypto.ParseRSAPrivateKeyFromPEM([]byte(`-----BEGIN PRIVATE KEY-----
 MIIBVQIBADANBgkqhkiG9w0BAQEFAASCAT8wggE7AgEAAkEAwNcqwbtB4MZyNI27
 +u/wPJ7t72lp5EBsu5aJWFCEUu98o4kforWRkPP1LLc8oL03co7Wglin2/EM2xn6
 /8VSnwIDAQABAkEAj+R+DQ0zfQvW0AwqhnZfZnyYwpp/30eLWvZbCcEa2954Ehwl
@@ -303,7 +307,7 @@ fUrSNDsdPH8UQ9L03zta+wPsImVBjqECIHiRnbty/YtVop43mMpH874DJfaYlxs5
 UwLZRrXB/rC5
 -----END PRIVATE KEY-----`))
 
-		publicKey, _ := crypto.ParseRSAPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
+		publicKey, _ := joseCrypto.ParseRSAPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
 MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAMDXKsG7QeDGcjSNu/rv8Dye7e9paeRA
 bLuWiVhQhFLvfKOJH6K1kZDz9Sy3PKC9N3KO1oJYp9vxDNsZ+v/FUp8CAwEAAQ==
 -----END PUBLIC KEY-----`))
@@ -312,30 +316,31 @@ bLuWiVhQhFLvfKOJH6K1kZDz9Sy3PKC9N3KO1oJYp9vxDNsZ+v/FUp8CAwEAAQ==
 			PrivateKey: privateKey,
 			PublicKey:  publicKey,
 		})
-		jwter.SetMethods(crypto.SigningMethodPS256)
+		jwter.SetMethods(joseCrypto.SigningMethodPS256)
 		token, err := jwter.Sign(josejws.Claims{"test": "OK"})
 		// eyJhbGciOiJQUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoiT0sifQ.J9q3dZLqacdQp_PdqVHfaNNVYUgFyxbV8jhX8HnoZUiHlZKGUXmVDcSSJ4ZfpMUcLmXUDlq5nee9ad0w2IU9DA
 		assert.Nil(err)
 		claims, _ := jwter.Verify(token)
 		assert.Equal("OK", claims.Get("test"))
 
-		claims, _ = Verify(token, crypto.SigningMethodPS256, KeyPair{
+		jwtToken, _ := josejws.ParseJWT([]byte(token))
+		claims, _ = Verify(jwtToken, joseCrypto.SigningMethodPS256, []interface{}{KeyPair{
 			PrivateKey: privateKey,
 			PublicKey:  publicKey,
-		})
+		}})
 		assert.Equal("OK", claims.Get("test"))
 	})
 
 	t.Run("support SigningMethodES256", func(t *testing.T) {
 		assert := assert.New(t)
 		// 512 bit, PKCS#8
-		privateKey, _ := crypto.ParseECPrivateKeyFromPEM([]byte(`-----BEGIN EC PRIVATE KEY-----
+		privateKey, _ := joseCrypto.ParseECPrivateKeyFromPEM([]byte(`-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIAh5qA3rmqQQuu0vbKV/+zouz/y/Iy2pLpIcWUSyImSwoAoGCCqGSM49
 AwEHoUQDQgAEYD54V/vp+54P9DXarYqx4MPcm+HKRIQzNasYSoRQHQ/6S6Ps8tpM
 cT+KvIIC8W/e9k0W7Cm72M1P9jU7SLf/vg==
 -----END EC PRIVATE KEY-----`))
 
-		publicKey, _ := crypto.ParseECPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
+		publicKey, _ := joseCrypto.ParseECPublicKeyFromPEM([]byte(`-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEYD54V/vp+54P9DXarYqx4MPcm+HK
 RIQzNasYSoRQHQ/6S6Ps8tpMcT+KvIIC8W/e9k0W7Cm72M1P9jU7SLf/vg==
 -----END PUBLIC KEY-----`))
@@ -344,17 +349,18 @@ RIQzNasYSoRQHQ/6S6Ps8tpMcT+KvIIC8W/e9k0W7Cm72M1P9jU7SLf/vg==
 			PrivateKey: privateKey,
 			PublicKey:  publicKey,
 		})
-		jwter.SetMethods(crypto.SigningMethodES256)
+		jwter.SetMethods(joseCrypto.SigningMethodES256)
 		token, err := jwter.Sign(josejws.Claims{"test": "OK"})
 		// eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZXN0IjoiT0sifQ.MEQCIAy5-edjjRliSD4rgYTL02nuNka_n_tGUzDLEvHAKUcpAiAu3QkiPvB3sYO5ZAYJWCPdCk7lh4yYSy4z7VorZ893cQ
 		assert.Nil(err)
 		claims, _ := jwter.Verify(token)
 		assert.Equal("OK", claims.Get("test"))
 
-		claims, _ = Verify(token, crypto.SigningMethodES256, KeyPair{
+		jwtToken, _ := josejws.ParseJWT([]byte(token))
+		claims, _ = Verify(jwtToken, joseCrypto.SigningMethodES256, []interface{}{KeyPair{
 			PrivateKey: privateKey,
 			PublicKey:  publicKey,
-		})
+		}})
 		assert.Equal("OK", claims.Get("test"))
 	})
 }
