@@ -46,7 +46,8 @@ func GenerateKey() (publicKey, privateKey string) {
 }
 
 // KeyPairFrom converts key encoded by base64.RawURLEncoding to KeyPair.
-// if privateKey omits, Sign method can't be used.
+// privateKey is used for sign, publicKey is used for verify.
+// if privateKey omits, sign method can't be used.
 func KeyPairFrom(publicKey string, privateKey ...string) (authJwt.KeyPair, error) {
 	keyPair := authJwt.KeyPair{}
 	public, err := base64.RawURLEncoding.DecodeString(publicKey)

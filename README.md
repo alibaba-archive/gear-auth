@@ -47,8 +47,8 @@ func main() {
 		panic(err)
 	}
 
-	jwter := jwt.New(keyPair)
-	jwter.SetMethods(ed25519.SigningMethodED25519)
+	jwter := jwt.New()
+	jwter.SetSigning(ed25519.SigningMethodED25519, keyPair)
 	jwter.SetBackupSigning(josecrypto.SigningMethodHS256, []byte("old key 1"), []byte("old key 2"))
 
 	token, err := jwter.Sign(josejws.Claims{"test": "OK"})

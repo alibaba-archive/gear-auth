@@ -120,6 +120,7 @@ func (j *JWT) SetExpiresIn(expiresIn time.Duration) {
 }
 
 // SetKeys set new keys to jwt.
+// [deprecated] Please use SetSigning method.
 func (j *JWT) SetKeys(keys ...interface{}) {
 	if len(keys) == 0 || keys[0] == nil {
 		panic(errors.New("invalid keys"))
@@ -128,6 +129,7 @@ func (j *JWT) SetKeys(keys ...interface{}) {
 }
 
 // SetMethods set one or more signing methods which can be used rotational.
+// [deprecated] Please use SetSigning method.
 func (j *JWT) SetMethods(method josecrypto.SigningMethod) {
 	if method == nil {
 		panic(errors.New("invalid signing method"))
@@ -143,10 +145,25 @@ func (j *JWT) SetValidator(validator *josejwt.Validator) {
 	j.validator = []*josejwt.Validator{validator}
 }
 
+// SetSigning add signing method and keys.
+func (j *JWT) SetSigning(method josecrypto.SigningMethod, keys ...interface{}) {
+	if len(keys) == 0 || keys[0] == nil {
+		panic(errors.New("invalid keys"))
+	}
+	if method == nil {
+		panic(errors.New("invalid signing method"))
+	}
+	j.method = method
+	j.keys = keys
+}
+
 // SetBackupSigning add a backup signing for Verify method, not for Sign method.
 func (j *JWT) SetBackupSigning(method josecrypto.SigningMethod, keys ...interface{}) {
 	if len(keys) == 0 || keys[0] == nil {
 		panic(errors.New("invalid keys"))
+	}
+	if method == nil {
+		panic(errors.New("invalid signing method"))
 	}
 	j.backupMethod = method
 	j.backupKeys = keys
