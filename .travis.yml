@@ -1,14 +1,19 @@
 sudo: false
 language: go
-go:
-  - 1.9
-  - 1.9.1
-  - 1.9.2
-  - 1.9.3
+matrix:
+  include:
+  - go: "1.9.x"
+  - go: "1.10.x"
+  - go: "1.11.x"
+
+env:
+  - GO111MODULE=on
+
 before_install:
   - go get -t -v ./...
   - go get github.com/modocache/gover
   - go get github.com/mattn/goveralls
+
 script:
   - go test -coverprofile=auth.coverprofile
   - go test -coverprofile=jwt.coverprofile ./jwt

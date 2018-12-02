@@ -24,9 +24,9 @@ type signingMethodED25519 struct {
 
 // Specific instances of EC SigningMethods.
 var (
-	// SigningMethodES256 implements ED25519.
+	// SigningMethodED25519 implements ED25519.
 	SigningMethodED25519 = &signingMethodED25519{
-		Name: "ED25519",
+		Name: "Ed25519",     // https://www.npmjs.com/package/jsonwebtoken-ed25519
 		Hash: crypto.SHA512, // not used
 	}
 )
